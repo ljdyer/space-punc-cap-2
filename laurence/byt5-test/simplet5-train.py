@@ -108,7 +108,7 @@ if __name__ == "__main__":
             raise ValueError("num_docs_to_use is required for training mode")
         if args.outputdir is None:
             raise ValueError("outputdir is required for training mode")
-        if args.epochs is None:
+        if args.max_epochs is None:
             raise ValueError("epochs is required for training mode")
         train(args.num_docs_to_use, args.outputdir, args.max_epochs)
 
