@@ -50,7 +50,7 @@ def load_and_prep_df(csv_path, num_docs_to_use):
         text = ' '.join(all_cleaned)
     else:
         num_docs_to_use = int(num_docs_to_use)
-        text = ' '.join(all_cleaned[num_docs_to_use])
+        text = ' '.join(all_cleaned[:num_docs_to_use])
     target_text = chunked_text(text, CHUNK_LENGTH_TARGET)
     source_text = [remove_formatting(s) for s in target_text]
     return pd.DataFrame({
