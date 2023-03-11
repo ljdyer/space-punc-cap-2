@@ -13,12 +13,22 @@ else:
 CHUNK_LENGTH_TARGET = 100
 SOURCE_MAX_TOKEN_LEN = 100 
 TARGET_MAX_TOKEN_LEN = 150
+NUM_TEST_SAMPLES = 10
 
 parser = argparse.ArgumentParser(description='Train or evaluate SimpletT5 model for feature restoration')
-parser.add_argument('mode', metavar='mode', type=str, choices=['train', 'evaluate'])
-parser.add_argument('num_docs_to_use', metavar='num_docs_to_use', type=str)
-parser.add_argument('outputdir', metavar='outputdir', type=str)
-parser.add_argument('max_epochs', metavar='max_epochs', type=int)
+parser.add_argument('mode', type=str, choices=['train', 'evaluate'])
+parser.add_argument(
+    '--num_docs_to_use', '-n', type=str, default=None,
+    help="The number of documents to use. Should be 'all' or an integer. Required in training mode only.")
+parser.add_argument(
+    '--outputdir', metavar='-o', type=str, default=None,
+    help="The directory in which to store saved models. Required in training model only.")
+parser.add_argument(
+    '--max_epochs', metavar='-e', type=int, default=None,
+    help="The maximum number of epochs. Required in training mode only.")
+parser.add_argument(
+    '--model_dir', metavar='-m', type=str, default=None,
+    help="The directory in which the model is stored. Required in evaluation mode only.")
 
 
 # ====================
@@ -42,6 +52,20 @@ def train(num_docs_to_use, outputdir, max_epochs):
             )
 
 
+# ====================
+def evaluate(model_dir):
+
+    print(f'Loading test data from {test_path}...')
+    test_df = load_and_prep_df(test_path, 'all')
+    test_data = test_df.sample(NUM_TEST_SAMPLES).to_dict(orient='records')
+    model = SimpleT5()
+    model.load_model(model_dir)
+    for t in test_data:
+        print(f"Input: {t['source_text']}")
+        print(f"Reference: {t['target_text']}")
+        print(f"Hypothesis: {model.predict(t['source_text'])}")
+
+    
 # ====================
 def load_and_prep_df(csv_path, num_docs_to_use):
 
@@ -78,10 +102,17 @@ def remove_formatting(string):
 if __name__ == "__main__":
 
     args = parser.parse_args()
+
     if args.mode == 'train':
+        if args.num_docs_to_use is None:
+            raise ValueError("num_docs_to_use is required for training mode")
+        if args.outputdir is None:
+            raise ValueError("outputdir is required for training mode")
+        if args.epochs is None:
+            raise ValueError("epochs is required for training mode")
         train(args.num_docs_to_use, args.outputdir, args.max_epochs)
+
     elif args.mode == 'evaluate':
-        print('Evaluate: not implemented yet.')
-    
-
-
+        if args.model_dir is None:
+            raise ValueError("model_dir is required for evaluation mode")
+        evaluate(args.model_dir)
