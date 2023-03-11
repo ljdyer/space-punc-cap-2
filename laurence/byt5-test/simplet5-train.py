@@ -63,7 +63,7 @@ def evaluate(model_dir):
     for t in test_data:
         print(f"Input: {t['source_text']}")
         print(f"Reference: {t['target_text']}")
-        print(f"Hypothesis: {model.predict(t['source_text'])}")
+        print(f"Hypothesis: {model.predict(t['source_text'])[0]}")
 
     
 # ====================
