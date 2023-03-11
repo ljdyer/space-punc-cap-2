@@ -1,4 +1,2 @@
 pandas
-pytorch-lightning==0.8.1
-transformers==4.9.0
-nltk
+simplet5
