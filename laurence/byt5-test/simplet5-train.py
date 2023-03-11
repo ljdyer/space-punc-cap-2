@@ -15,12 +15,14 @@ SOURCE_MAX_TOKEN_LEN = 100
 TARGET_MAX_TOKEN_LEN = 150
 
 parser = argparse.ArgumentParser(description='Train or evaluate SimpletT5 model for feature restoration')
-parser.add_argument('mode', metavar='m', type=str, choices=['train', 'evaluate'])
-parser.add_argument('num_docs_to_use', metavar='n', type=str)
+parser.add_argument('mode', metavar='mode', type=str, choices=['train', 'evaluate'])
+parser.add_argument('num_docs_to_use', metavar='num_docs_to_use', type=str)
+parser.add_argument('outputdir', metavar='outputdir', type=str)
+parser.add_argument('max_epochs', metavar='max_epochs', type=int)
 
 
 # ====================
-def train(num_docs_to_use):
+def train(num_docs_to_use, outputdir, max_epochs):
 
     print(f'Loading training data from {train_path}...')
     train_df = load_and_prep_df(train_path, num_docs_to_use)
@@ -29,11 +31,12 @@ def train(num_docs_to_use):
     model = SimpleT5()
     model.from_pretrained(model_type="byt5", model_name="google/byt5-small")
     model.train(train_df=train_df,
-                eval_df=val_df, 
-                source_max_token_len=SOURCE_MAX_TOKEN_LEN, 
-                target_max_token_len=TARGET_MAX_TOKEN_LEN, 
-                batch_size=8, 
-                max_epochs=10,
+                eval_df=val_df,
+                outputdir=f'outputs/{outputdir}',
+                source_max_token_len=SOURCE_MAX_TOKEN_LEN,
+                target_max_token_len=TARGET_MAX_TOKEN_LEN,
+                batch_size=8,
+                max_epochs=max_epochs,
                 use_gpu=True
             )
 
@@ -75,7 +78,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     if args.mode == 'train':
-        train(args.num_docs_to_use)
+        train(args.num_docs_to_use, args.outputdir, args.max_epochs)
     elif args.mode == 'evaluate':
         print('Evaluate: not implemented yet.')
     
