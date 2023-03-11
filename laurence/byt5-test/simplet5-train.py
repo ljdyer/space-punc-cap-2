@@ -26,6 +26,7 @@ def train(num_docs_to_use, outputdir, max_epochs):
 
     print(f'Loading training data from {train_path}...')
     train_df = load_and_prep_df(train_path, num_docs_to_use)
+    print(train_df.head(10))
     train_df, val_df = train_test_split(train_df, test_size=0.2)
     print(f'Num samples: {len(train_df)} train, {len(val_df)} validation')
     model = SimpleT5()
