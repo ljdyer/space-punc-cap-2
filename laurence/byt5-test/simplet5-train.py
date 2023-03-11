@@ -59,7 +59,7 @@ def evaluate(model_dir):
     test_df = load_and_prep_df(test_path, 'all')
     test_data = test_df.sample(NUM_TEST_SAMPLES).to_dict(orient='records')
     model = SimpleT5()
-    model.load_model(model_dir)
+    model.load_model("byt5", model_dir)
     for t in test_data:
         print(f"Input: {t['source_text']}")
         print(f"Reference: {t['target_text']}")
