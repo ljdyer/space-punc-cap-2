@@ -144,6 +144,7 @@ def model_from_path(path):
     print(f'Loading model from {path}...')
     model = SimpleT5()
     model.load_model("byt5", path)
+    return model
 
 
 # ====================
