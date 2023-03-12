@@ -84,7 +84,7 @@ def predict(model_dir):
         if input_.lower() == 'x':
             return
         print('\nPrediction:')
-        print(model.predict(input_)[0])
+        print(model.predict(SOD + input_ + EOD)[0])
         print()
 
 
