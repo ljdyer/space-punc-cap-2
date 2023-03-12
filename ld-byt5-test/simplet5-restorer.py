@@ -109,7 +109,7 @@ def predict_doc(model, doc):
         doc = doc[restore_until:]
         chunk_restored: str = model.predict(text_to_restore)[0]
         chunk_restored_split: List[str] = chunk_restored.split(' ')
-        prefix = remove_formatting(chunk_restored_split[-CHUNKER_NUM_PREFIX_WORDS:])
+        prefix = remove_formatting(' '.join(chunk_restored_split[-CHUNKER_NUM_PREFIX_WORDS:]))
         all_output.extend(chunk_restored_split[:-CHUNKER_NUM_PREFIX_WORDS])
     output = ' '.join(all_output)
     # Add any text remaining in 'prefix'
