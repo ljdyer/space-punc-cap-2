@@ -16,4 +16,7 @@ for item in delete_items:
     print(item)
 if input("Is this OK? (type 'y' if OK)").lower() == 'y':
     for item in delete_items:
-        shutil.rmtree(item)
+        if item.is_dir():
+            shutil.rmtree(item)
+        elif item.is_file():
+            item.unlink()
