@@ -4,6 +4,7 @@ import more_itertools
 import socket
 from sklearn.model_selection import train_test_split
 from simplet5 import SimpleT5
+from typing import List
 
 if socket.gethostname() == 'Laurences-MacBook-Air.local':
     train_path, test_path = 'ted_train.csv', 'ted_test.csv'
@@ -14,6 +15,9 @@ CHUNK_LENGTH_TARGET = 100
 SOURCE_MAX_TOKEN_LEN = 100 
 TARGET_MAX_TOKEN_LEN = 150
 NUM_TEST_SAMPLES = 10
+
+CHUNK_LENGTH_PREDICT = 100
+CHUNKER_NUM_PREFIX_WORDS = 5
 
 parser = argparse.ArgumentParser(
     description='Train or evaluate SimpletT5 model for feature restoration',
@@ -80,15 +84,39 @@ def evaluate_full(model_dir, num_docs_to_use):
 
     print(f'Loading test data from {test_path}...')
     test_docs = pd.read_csv(test_path)[['no_spaces', 'all_cleaned']].to_dict(orient='records')
+    model = model_from_path(model_dir)
     if num_docs_to_use != 'all':
         num_docs_to_use = int(num_docs_to_use)
         test_docs = test_docs[:num_docs_to_use]
     for doc in test_docs:
-        print('Input:')
-        print(doc['no_spaces'])
-        print()
-        print('Reference:')
-        print(doc['all_cleaned'])
+        input = doc['no_spaces']
+        reference = doc['all_cleaned']
+        hypothesis = predict_doc(input)
+        print(f'Input:\n{input}\n\n')
+        print(f'Reference:\n{reference}\n\n')
+        print(f'Hypothesis:\n{hypothesis}\n\n')
+        print('====================')
+
+
+# ====================
+def predict_doc(model, doc):
+
+    all_output: List[str] = []
+    prefix = ''
+    while doc:
+        restore_until = CHUNK_LENGTH_PREDICT - len(prefix)
+        text_to_restore = prefix + doc[:restore_until]
+        doc = doc[restore_until:]
+        chunk_restored: str = model.predict(text_to_restore)[0]
+        chunk_restored_split: List[str] = chunk_restored.split(' ')
+        prefix = remove_formatting(chunk_restored_split[-CHUNKER_NUM_PREFIX_WORDS:])
+        all_output.extend(chunk_restored_split[:-CHUNKER_NUM_PREFIX_WORDS])
+    output = ' '.join(all_output)
+    # Add any text remaining in 'prefix'
+    if prefix:
+        prefix_restored = model.predict(prefix)[0]
+        output = output + ' ' + prefix_restored.strip()
+    return output
     
     
 # ====================
