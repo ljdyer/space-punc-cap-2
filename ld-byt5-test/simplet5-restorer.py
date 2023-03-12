@@ -19,7 +19,7 @@ parser = argparse.ArgumentParser(
     description='Train or evaluate SimpletT5 model for feature restoration',
     allow_abbrev=False
 )
-parser.add_argument('mode', type=str, choices=['train', 'evaluate', 'predict'],
+parser.add_argument('mode', metavar='mode', type=str, choices=['train', 'evaluate', 'predict'],
     help="The mode to enter: train, evaluate, or predict.")
 parser.add_argument(
     '--num_docs_to_use', '-n', type=str, default=None,
