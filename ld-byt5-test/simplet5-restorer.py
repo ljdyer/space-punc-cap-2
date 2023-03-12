@@ -91,7 +91,7 @@ def evaluate_full(model_dir, num_docs_to_use):
     for doc in test_docs:
         input = doc['no_spaces']
         reference = doc['all_cleaned']
-        hypothesis = predict_doc(input)
+        hypothesis = predict_doc(model, input)
         print(f'Input:\n{input}\n\n')
         print(f'Reference:\n{reference}\n\n')
         print(f'Hypothesis:\n{hypothesis}\n\n')
