@@ -19,7 +19,8 @@ parser = argparse.ArgumentParser(
     description='Train or evaluate SimpletT5 model for feature restoration',
     allow_abbrev=False
 )
-parser.add_argument('mode', type=str, choices=['train', 'evaluate'])
+parser.add_argument('mode', type=str, choices=['train', 'evaluate', 'predict'],
+    help="The mode to enter: train, evaluate, or predict.")
 parser.add_argument(
     '--num_docs_to_use', '-n', type=str, default=None,
     help="The number of documents to use. Should be 'all' or an integer. Required in training mode only.")
@@ -31,7 +32,7 @@ parser.add_argument(
     help="The maximum number of epochs. Required in training mode only.")
 parser.add_argument(
     '--model_dir', '-m', type=str, default=None,
-    help="The directory in which the model is stored. Required in evaluation mode only.")
+    help="The directory in which the model is stored. Required in evaluation and predict modes only.")
 
 
 # ====================
@@ -61,6 +62,7 @@ def evaluate(model_dir):
     print(f'Loading test data from {test_path}...')
     test_df = load_and_prep_df(test_path, 'all')
     test_data = test_df.sample(NUM_TEST_SAMPLES).to_dict(orient='records')
+    print("Loading model...")
     model = SimpleT5()
     model.load_model("byt5", model_dir)
     for t in test_data:
@@ -72,6 +74,21 @@ def evaluate(model_dir):
         print(f"Hypothesis: {hypothesis}")
 
     
+# ====================
+def predict(model_dir):
+
+    print("Loading model...")
+    model = SimpleT5()
+    model.load_model("byt5", model_dir)
+    while True:
+        input = input("Enter text to restore formatting to (or 'x' to exit):\n")
+        if input.lower() == 'x':
+            return
+        print('\nPrediction:')
+        print(model.predict(input))
+        print()
+
+
 # ====================
 def load_and_prep_df(csv_path, num_docs_to_use):
 
@@ -122,3 +139,8 @@ if __name__ == "__main__":
         if args.model_dir is None:
             raise ValueError("model_dir is required for evaluation mode")
         evaluate(args.model_dir)
+
+    elif args.mode == 'predict':
+        if args.model_dir is None:
+            raise ValueError("model_dir is required for predict mode")
+        predict(args.model_dir)
