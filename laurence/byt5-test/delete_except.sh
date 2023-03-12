@@ -1,0 +1,1 @@
+find . -mindepth 1 -maxdepth 1 -type d -not -name test_100_20 -exec rm -rf '{}' \;

@@ -21,13 +21,13 @@ parser.add_argument(
     '--num_docs_to_use', '-n', type=str, default=None,
     help="The number of documents to use. Should be 'all' or an integer. Required in training mode only.")
 parser.add_argument(
-    '--outputdir', metavar='-o', type=str, default=None,
+    '--outputdir', '-o', type=str, default=None,
     help="The directory in which to store saved models. Required in training model only.")
 parser.add_argument(
-    '--max_epochs', metavar='-e', type=int, default=None,
+    '--max_epochs', '-e', type=int, default=None,
     help="The maximum number of epochs. Required in training mode only.")
 parser.add_argument(
-    '--model_dir', metavar='-m', type=str, default=None,
+    '--model_dir', '-m', type=str, default=None,
     help="The directory in which the model is stored. Required in evaluation mode only.")
 
 
