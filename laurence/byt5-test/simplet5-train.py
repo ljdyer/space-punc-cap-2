@@ -81,11 +81,11 @@ def predict(model_dir):
     model = SimpleT5()
     model.load_model("byt5", model_dir)
     while True:
-        input = input("Enter text to restore formatting to (or 'x' to exit):\n")
-        if input.lower() == 'x':
+        input_ = input("Enter text to restore formatting to (or 'x' to exit):\n")
+        if input_.lower() == 'x':
             return
         print('\nPrediction:')
-        print(model.predict(input))
+        print(model.predict(input_))
         print()
 
 
