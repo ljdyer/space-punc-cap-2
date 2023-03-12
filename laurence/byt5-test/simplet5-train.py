@@ -64,9 +64,12 @@ def evaluate(model_dir):
     model = SimpleT5()
     model.load_model("byt5", model_dir)
     for t in test_data:
-        print(f"Input:\t\t{t['source_text']}")
-        print(f"Reference:\t\t{t['target_text']}")
-        print(f"Hypothesis:\t\t{model.predict(t['source_text'])[0]}")
+        input = t['source_text']
+        reference = t['target_text']
+        hypothesis = model.predict(t['source_text'])[0]
+        print(f"Input:      {input}")
+        print(f"Reference:  {reference}")
+        print(f"Hypothesis: {hypothesis}")
 
     
 # ====================
