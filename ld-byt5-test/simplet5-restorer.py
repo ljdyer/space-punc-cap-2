@@ -19,11 +19,11 @@ parser = argparse.ArgumentParser(
     description='Train or evaluate SimpletT5 model for feature restoration',
     allow_abbrev=False
 )
-parser.add_argument('mode', metavar='mode', type=str, choices=['train', 'evaluate', 'predict'],
-    help="The mode to enter: train, evaluate, or predict.")
+parser.add_argument('mode', metavar='mode', type=str, choices=['train', 'evaluate_quick', 'evaluate_full', 'predict'],
+    help="The mode to enter: train, evaluate_quick, evaluate_full, or predict.")
 parser.add_argument(
     '--num_docs_to_use', '-n', type=str, default=None,
-    help="The number of documents to use. Should be 'all' or an integer. Required in training mode only.")
+    help="The number of documents to use. Should be 'all' or an integer. Required in train and evaluate_full modes only.")
 parser.add_argument(
     '--outputdir', '-o', type=str, default=None,
     help="The directory in which to store saved models. Required in training model only.")
@@ -32,7 +32,7 @@ parser.add_argument(
     help="The maximum number of epochs. Required in training mode only.")
 parser.add_argument(
     '--model_dir', '-m', type=str, default=None,
-    help="The directory in which the model is stored. Required in evaluation and predict modes only.")
+    help="The directory in which the model is stored. Required in evaluate_quick, evaluate_full, and predict modes only.")
 
 SOD = '▶'
 EOD = '◀' 
@@ -60,7 +60,7 @@ def train(num_docs_to_use, outputdir, max_epochs):
 
 
 # ====================
-def evaluate(model_dir):
+def evaluate_quick(model_dir):
 
     print(f'Loading test data from {test_path}...')
     test_df = load_and_prep_df(test_path, 'all')
@@ -74,6 +74,22 @@ def evaluate(model_dir):
         print(f"Reference:  {reference}")
         print(f"Hypothesis: {hypothesis}")
 
+
+# ====================
+def evaluate_full(model_dir, num_docs_to_use):
+
+    print(f'Loading test data from {test_path}...')
+    test_docs = pd.read_csv(test_path)[['no_spaces', 'all_cleaned']].to_dict(orient='records')
+    if num_docs_to_use != 'all':
+        num_docs_to_use = int(num_docs_to_use)
+        test_docs = test_docs[:num_docs_to_use]
+    for doc in test_docs:
+        print('Input:')
+        print(doc['no_spaces'])
+        print()
+        print('Reference:')
+        print(doc['all_cleaned'])
+    
     
 # ====================
 def predict(model_dir):
@@ -134,8 +150,9 @@ def model_from_path(path):
 if __name__ == "__main__":
 
     args = parser.parse_args()
+    mode = args.mode
 
-    if args.mode == 'train':
+    if mode == 'train':
         if args.num_docs_to_use is None:
             raise ValueError("num_docs_to_use is required for training mode")
         if args.outputdir is None:
@@ -144,12 +161,15 @@ if __name__ == "__main__":
             raise ValueError("epochs is required for training mode")
         train(args.num_docs_to_use, args.outputdir, args.max_epochs)
 
-    elif args.mode == 'evaluate':
+    else:
         if args.model_dir is None:
-            raise ValueError("model_dir is required for evaluation mode")
-        evaluate(args.model_dir)
-
-    elif args.mode == 'predict':
-        if args.model_dir is None:
-            raise ValueError("model_dir is required for predict mode")
-        predict(args.model_dir)
+            raise ValueError(f"model_dir is required for mode: {mode}")
+        model_dir = args.model_dir
+        if mode == 'evaluate_quick':
+            evaluate_quick(model_dir)
+        elif mode == 'evaluate_full':
+            if args.num_docs_to_use is None:
+                raise ValueError("num_docs_to_use is required for training mode")
+            evaluate_full(model_dir, args.num_docs_to_use)
+        elif mode == 'predict':
+            predict(args.model_dir)
