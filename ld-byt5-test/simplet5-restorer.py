@@ -107,7 +107,7 @@ def predict_doc(model, doc):
         restore_until = CHUNK_LENGTH_PREDICT - len(prefix)
         text_to_restore = prefix + doc[:restore_until]
         doc = doc[restore_until:]
-        print(doc)
+        print(f"Chars remaining to process: {len(doc)}")
         chunk_restored: str = model.predict(text_to_restore)[0]
         chunk_restored_split: List[str] = chunk_restored.split(' ')
         prefix = remove_formatting(' '.join(chunk_restored_split[-CHUNKER_NUM_PREFIX_WORDS:]))
