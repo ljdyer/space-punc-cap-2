@@ -1,9 +1,22 @@
-from typing import Tuple
+import more_itertools
 
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
 from character_only_llm.consts import TARGET_TEXT_COL, SOURCE_TEXT_COL
+
+
+# ====================
+def remove_formatting(string):
+    string = string.lower().replace(' ', '').replace('.', '').replace(',', '')
+    return string
+
+
+# ====================
+def chunked_text(text, n):
+    return [''.join(chunk)
+            for chunk
+            in more_itertools.chunked(list(text), n)]
 
 
 def fetch_restoration_data() -> pd.DataFrame:
@@ -20,8 +33,14 @@ def parse_restoration_data(df: pd.DataFrame) -> pd.DataFrame:
     This function will fetch the summarisation data.
     :return:
     """
-    df = df.rename(columns={"no_punctuation": TARGET_TEXT_COL, "all_cleaned": SOURCE_TEXT_COL})
-    df = df[[SOURCE_TEXT_COL, TARGET_TEXT_COL]]
+    all_cleaned = df['all_cleaned'].to_list()
+    text = ' '.join(all_cleaned)
+    target_text = chunked_text(text, 100)
+    source_text = [remove_formatting(s) for s in target_text]
+    df = pd.DataFrame({
+        SOURCE_TEXT_COL: pd.Series(source_text),
+        TARGET_TEXT_COL: pd.Series(target_text)
+    })
     df[SOURCE_TEXT_COL] = "restore: " + df[SOURCE_TEXT_COL]
     return df
 

@@ -90,14 +90,15 @@ class ByT5Model(object):
             max_epochs=max_epochs,
             log_every_n_steps=1,
             accelerator="gpu",
-            gpus=1,
+            devices=[2],
             num_sanity_val_steps=0
         )
 
         # fit trainer to our data
         trainer.fit(self.model, self.data_module)
 
-    def load_model(self, model_dir: str = '/experiments/ahughes/character_only_llm/outputs/simplet5-epoch-2-train-loss-0.7237-val-loss-0.6376'):
+    def load_model(self,
+                   model_dir: str = '/experiments/ahughes/character_only_llm/outputs/simplet5-epoch-2-train-loss-0.7237-val-loss-0.6376'):
         """
         loads a checkpoint for inference/prediction
         """
