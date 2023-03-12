@@ -34,6 +34,9 @@ parser.add_argument(
     '--model_dir', '-m', type=str, default=None,
     help="The directory in which the model is stored. Required in evaluation and predict modes only.")
 
+SOD = '▶'
+EOD = '◀' 
+
 
 # ====================
 def train(num_docs_to_use, outputdir, max_epochs):
@@ -62,9 +65,7 @@ def evaluate(model_dir):
     print(f'Loading test data from {test_path}...')
     test_df = load_and_prep_df(test_path, 'all')
     test_data = test_df.sample(NUM_TEST_SAMPLES).to_dict(orient='records')
-    print("Loading model...")
-    model = SimpleT5()
-    model.load_model("byt5", model_dir)
+    model = model_from_path(model_dir)
     for t in test_data:
         input = t['source_text']
         reference = t['target_text']
@@ -77,9 +78,7 @@ def evaluate(model_dir):
 # ====================
 def predict(model_dir):
 
-    print("Loading model...")
-    model = SimpleT5()
-    model.load_model("byt5", model_dir)
+    model = model_from_path(model_dir)
     while True:
         input_ = input("Enter text to restore formatting to (or 'x' to exit):\n")
         if input_.lower() == 'x':
@@ -93,6 +92,7 @@ def predict(model_dir):
 def load_and_prep_df(csv_path, num_docs_to_use):
 
     all_cleaned = pd.read_csv(csv_path)['all_cleaned'].to_list()
+    all_cleaned = [SOD + doc + EOD for doc in all_cleaned]
     if num_docs_to_use == 'all':
         text = ' '.join(all_cleaned)
     else:
@@ -100,6 +100,7 @@ def load_and_prep_df(csv_path, num_docs_to_use):
         text = ' '.join(all_cleaned[:num_docs_to_use])
     target_text = chunked_text(text, CHUNK_LENGTH_TARGET)
     source_text = [remove_formatting(s) for s in target_text]
+    target_text = [s.replace(SOD, '').replace(EOD, '') for s in target_text]
     return pd.DataFrame({
         'source_text': pd.Series(source_text),
         'target_text': pd.Series(target_text)
@@ -119,6 +120,14 @@ def remove_formatting(string):
 
     string = string.lower().replace(' ', '').replace('.', '').replace(',', '')
     return string
+
+
+# ====================
+def model_from_path(path):
+
+    print(f'Loading model from {path}...')
+    model = SimpleT5()
+    model.load_model("byt5", path)
 
 
 # ====================
