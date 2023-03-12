@@ -15,7 +15,10 @@ SOURCE_MAX_TOKEN_LEN = 100
 TARGET_MAX_TOKEN_LEN = 150
 NUM_TEST_SAMPLES = 10
 
-parser = argparse.ArgumentParser(description='Train or evaluate SimpletT5 model for feature restoration')
+parser = argparse.ArgumentParser(
+    description='Train or evaluate SimpletT5 model for feature restoration',
+    allow_abbrev=False
+)
 parser.add_argument('mode', type=str, choices=['train', 'evaluate'])
 parser.add_argument(
     '--num_docs_to_use', '-n', type=str, default=None,
