@@ -98,7 +98,7 @@ def evaluate_full(model_dir, num_docs_to_use):
         print(f'Reference:\n{reference}\n\n')
         print(f'Hypothesis:\n{hypothesis}\n\n')
         print('====================')
-        result = result.append({'input': input, 'reference': reference, 'hypothesis': hypothesis})
+        result = result.append({'input': input, 'reference': reference, 'hypothesis': hypothesis}, ignore_index=True)
         result.to_csv(Path(model_dir) / f'evaluate_full_{num_docs_to_use}.csv')
 
 # ====================
