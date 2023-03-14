@@ -5,6 +5,7 @@ import socket
 from sklearn.model_selection import train_test_split
 from simplet5 import SimpleT5
 from typing import List
+from pathlib import Path
 
 if socket.gethostname() == 'Laurences-MacBook-Air.local':
     train_path, test_path = 'ted_train.csv', 'ted_test.csv'
@@ -88,6 +89,7 @@ def evaluate_full(model_dir, num_docs_to_use):
     if num_docs_to_use != 'all':
         num_docs_to_use = int(num_docs_to_use)
         test_docs = test_docs[:num_docs_to_use]
+    result = pd.DataFrame()
     for doc in test_docs:
         input = doc['no_spaces']
         reference = doc['all_cleaned']
@@ -96,7 +98,8 @@ def evaluate_full(model_dir, num_docs_to_use):
         print(f'Reference:\n{reference}\n\n')
         print(f'Hypothesis:\n{hypothesis}\n\n')
         print('====================')
-
+        result = result.append({'input': input, 'reference': reference, 'hypothesis': hypothesis})
+        result.to_csv(Path(model_dir) / f'evaluate_full_{num_docs_to_use}.csv')
 
 # ====================
 def predict_doc(model, doc):
