@@ -42,7 +42,7 @@ def single_match_single_group(regex: str, string: str):
             f"Expected a single match, but found {find_all} matches. " +\
             f"RegEx: {regex}; String: {string}."
         )
-    return find_all[0].group(1)
+    return find_all[0]
 
 
 # ====================
