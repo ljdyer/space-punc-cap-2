@@ -58,7 +58,7 @@ def get_model_info(outputsdir: str) -> dict:
             'train_loss': float(single_match_single_group(r'train-loss-([\d\.]*)', model_name)),
             'val_loss': float(single_match_single_group(r'val-loss-([\d\.]*)', model_name)),
         })
-    return sorted(models, key=lambda x: x['epoch'])
+    return sorted(model_info, key=lambda x: x['epoch'])
 
 
 # # ====================
