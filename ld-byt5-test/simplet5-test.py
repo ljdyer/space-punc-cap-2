@@ -120,7 +120,7 @@ def evaluate_full(model_dir):
 
     test_docs = pd.read_csv(test_path)[['no_spaces', 'all_cleaned']].to_dict(orient='records')
     num_docs_to_use = int(input(
-        f"There are {len(test_docs)} available. How many would you like to use? (Input an integer, or 'all'): "
+        f"There are {len(test_docs)} test documents available. How many would you like to use? (Input an integer, or 'all'): "
     ))
     if num_docs_to_use != 'all':
         num_docs_to_use = int(num_docs_to_use)
@@ -145,7 +145,9 @@ def evaluate_full(model_dir):
         capitalization=True,
         feature_chars='., '
     )
-    fre.to_csv(metrics_path)
+    prfs = pd.DataFrame(fre.get_prfs()).transpose()
+    print(prfs)
+    prfs.to_csv(metrics_path)
 
 
 # ====================
