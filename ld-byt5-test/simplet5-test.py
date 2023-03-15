@@ -81,7 +81,7 @@ def select_model(outputsdir: str) -> str:
     print(tabulate(model_info))
     choice = int(input('Which model do you wish to evaluate? '))
     chosen_model = get_dict_by_value(model_info, 'option', choice)
-    return chosen_model
+    return chosen_model['name']
 
 
 # # ====================
@@ -207,4 +207,5 @@ if __name__ == "__main__":
     outputsdir = args.outputsdir
     
     model_dir = select_model(outputsdir)
+
     
