@@ -39,10 +39,22 @@ def single_match_single_group(regex: str, string: str):
     find_all = re.findall(regex, string)
     if len(find_all) != 1:
         raise RuntimeError(
-            f"Expected a single match, but found {find_all} matches. " +\
+            f"Expected a single match, but found {len(find_all)} matches. " +\
             f"RegEx: {regex}; String: {string}."
         )
     return find_all[0]
+
+
+# ====================
+def get_dict_by_value(list_of_dicts, key, value):
+
+    matches = [d for d in list_of_dicts if d[key] == value]
+    if len(matches) != 1:
+        raise RuntimeError(
+            f"Expected a single match, but found {len(matches)} matches. " +\
+            f"Key: {key}; Value: {value}"
+        )
+    return matches[0]
 
 
 # ====================
@@ -59,6 +71,17 @@ def get_model_info(outputsdir: str) -> dict:
             'val_loss': float(single_match_single_group(r'val-loss-([\d\.]*)', model_name)),
         })
     return sorted(model_info, key=lambda x: x['epoch'])
+
+
+# ====================
+def select_model(outputsdir: str) -> str:
+
+    model_info = get_model_info(outputsdir)
+    model_info = [{'option': i, **m} for i, m in enumerate(model_info)]
+    print(tabulate(model_info))
+    choice = int(input('Which model do you wish to evaluate? '))
+    chosen_model = get_dict_by_value(model_info, 'option', choice)
+    return chosen_model
 
 
 # # ====================
@@ -182,6 +205,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     outputsdir = args.outputsdir
-
-    model_info = get_model_info(outputsdir)
-    print(tabulate(model_info))
+    
+    model_dir = select_model(outputsdir)
+    
