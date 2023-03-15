@@ -222,7 +222,7 @@ if __name__ == "__main__":
     }
     for i, o in OPTIONS.items():
         print(f"{i}. {o[0]}")
-    chosen_option = OPTIONS(int(input('What would you like to do? ')))
+    chosen_option = OPTIONS[int(input('What would you like to do? '))]
     chosen_option[1](model_dir)
     
 
