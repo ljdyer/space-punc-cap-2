@@ -2,3 +2,4 @@ pandas
 simplet5
 more_itertools
 scikit-learn
+tabulate

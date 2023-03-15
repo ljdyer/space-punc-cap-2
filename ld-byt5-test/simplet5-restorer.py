@@ -8,12 +8,12 @@ from typing import List
 from pathlib import Path
 
 if socket.gethostname() == 'Laurences-MacBook-Air.local':
-    train_path, test_path = 'ted_train.csv', 'ted_test.csv'
+    train_path = 'ted_train.csv'
 else:
-    train_path, test_path = '/data/ldyer/ted_train.csv', '/data/ldyer/ted_test.csv'
+    train_path = '/data/ldyer/ted_train.csv'
 
 CHUNK_LENGTH_TARGET = 100
-SOURCE_MAX_TOKEN_LEN = 100 
+SOURCE_MAX_TOKEN_LEN = 100
 TARGET_MAX_TOKEN_LEN = 150
 NUM_TEST_SAMPLES = 10
 
@@ -21,23 +21,19 @@ CHUNK_LENGTH_PREDICT = 100
 CHUNKER_NUM_PREFIX_WORDS = 5
 
 parser = argparse.ArgumentParser(
-    description='Train or evaluate SimpletT5 model for feature restoration',
+    description='Train a SimpletT5 model for feature restoration',
     allow_abbrev=False
 )
-parser.add_argument('mode', metavar='mode', type=str, choices=['train', 'evaluate_quick', 'evaluate_full', 'predict'],
-    help="The mode to enter: train, evaluate_quick, evaluate_full, or predict.")
+
 parser.add_argument(
     '--num_docs_to_use', '-n', type=str, default=None,
-    help="The number of documents to use. Should be 'all' or an integer. Required in train and evaluate_full modes only.")
+    help="The number of documents to use. Must be 'all' or an integer.")
 parser.add_argument(
     '--outputdir', '-o', type=str, default=None,
-    help="The directory in which to store saved models. Required in training model only.")
+    help="The directory in which to store saved models.")
 parser.add_argument(
     '--max_epochs', '-e', type=int, default=None,
-    help="The maximum number of epochs. Required in training mode only.")
-parser.add_argument(
-    '--model_dir', '-m', type=str, default=None,
-    help="The directory in which the model is stored. Required in evaluate_quick, evaluate_full, and predict modes only.")
+    help="The maximum number of epochs.")
 
 SOD = '▶'
 EOD = '◀' 
@@ -62,78 +58,6 @@ def train(num_docs_to_use, outputdir, max_epochs):
                 max_epochs=max_epochs,
                 use_gpu=True
             )
-
-
-# ====================
-def evaluate_quick(model_dir):
-
-    print(f'Loading test data from {test_path}...')
-    test_df = load_and_prep_df(test_path, 'all')
-    test_data = test_df.sample(NUM_TEST_SAMPLES).to_dict(orient='records')
-    model = model_from_path(model_dir)
-    for t in test_data:
-        input = t['source_text']
-        reference = t['target_text']
-        hypothesis = model.predict(t['source_text'])[0]
-        print(f"Input:      {input}")
-        print(f"Reference:  {reference}")
-        print(f"Hypothesis: {hypothesis}")
-
-
-# ====================
-def evaluate_full(model_dir, num_docs_to_use):
-
-    print(f'Loading test data from {test_path}...')
-    test_docs = pd.read_csv(test_path)[['no_spaces', 'all_cleaned']].to_dict(orient='records')
-    model = model_from_path(model_dir)
-    if num_docs_to_use != 'all':
-        num_docs_to_use = int(num_docs_to_use)
-        test_docs = test_docs[:num_docs_to_use]
-    result = pd.DataFrame()
-    for doc in test_docs:
-        input = doc['no_spaces']
-        reference = doc['all_cleaned']
-        hypothesis = predict_doc(model, input)
-        print(f'Input:\n{input}\n\n')
-        print(f'Reference:\n{reference}\n\n')
-        print(f'Hypothesis:\n{hypothesis}\n\n')
-        print('====================')
-        result = result.append({'input': input, 'reference': reference, 'hypothesis': hypothesis}, ignore_index=True)
-        result.to_csv(Path(model_dir) / f'evaluate_full_{num_docs_to_use}.csv')
-
-# ====================
-def predict_doc(model, doc):
-
-    all_output: List[str] = []
-    prefix = ''
-    while doc:
-        restore_until = CHUNK_LENGTH_PREDICT - len(prefix)
-        text_to_restore = prefix + doc[:restore_until]
-        doc = doc[restore_until:]
-        print(f"Chars remaining to process: {len(doc)}")
-        chunk_restored: str = model.predict(text_to_restore)[0]
-        chunk_restored_split: List[str] = chunk_restored.split(' ')
-        prefix = remove_formatting(' '.join(chunk_restored_split[-CHUNKER_NUM_PREFIX_WORDS:]))
-        all_output.extend(chunk_restored_split[:-CHUNKER_NUM_PREFIX_WORDS])
-    output = ' '.join(all_output)
-    # Add any text remaining in 'prefix'
-    if prefix:
-        prefix_restored = model.predict(prefix)[0]
-        output = output + ' ' + prefix_restored.strip()
-    return output
-    
-    
-# ====================
-def predict(model_dir):
-
-    model = model_from_path(model_dir)
-    while True:
-        input_ = input("Enter text to restore formatting to (or 'x' to exit):\n")
-        if input_.lower() == 'x':
-            return
-        print('\nPrediction:')
-        print(model.predict(SOD + input_ + EOD)[0])
-        print()
 
 
 # ====================
@@ -185,24 +109,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
     mode = args.mode
 
-    if mode == 'train':
-        if args.num_docs_to_use is None:
-            raise ValueError("num_docs_to_use is required for training mode")
-        if args.outputdir is None:
-            raise ValueError("outputdir is required for training mode")
-        if args.max_epochs is None:
-            raise ValueError("epochs is required for training mode")
-        train(args.num_docs_to_use, args.outputdir, args.max_epochs)
-
-    else:
-        if args.model_dir is None:
-            raise ValueError(f"model_dir is required for mode: {mode}")
-        model_dir = args.model_dir
-        if mode == 'evaluate_quick':
-            evaluate_quick(model_dir)
-        elif mode == 'evaluate_full':
-            if args.num_docs_to_use is None:
-                raise ValueError("num_docs_to_use is required for training mode")
-            evaluate_full(model_dir, args.num_docs_to_use)
-        elif mode == 'predict':
-            predict(args.model_dir)
+    if args.num_docs_to_use is None:
+        raise ValueError("num_docs_to_use is required for training mode")
+    if args.outputdir is None:
+        raise ValueError("outputdir is required for training mode")
+    if args.max_epochs is None:
+        raise ValueError("epochs is required for training mode")
+    train(args.num_docs_to_use, args.outputdir, args.max_epochs)
