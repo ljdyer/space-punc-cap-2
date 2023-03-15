@@ -181,7 +181,7 @@ def get_model_info(outputsdir: str) -> dict:
 if __name__ == "__main__":
 
     args = parser.parse_args()
-    outputsdir = argparse.outputsdir
+    outputsdir = args.outputsdir
 
     model_info = get_model_info(outputsdir)
     print(tabulate(model_info))
