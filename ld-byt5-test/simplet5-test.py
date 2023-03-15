@@ -207,5 +207,6 @@ if __name__ == "__main__":
     outputsdir = args.outputsdir
     
     model_dir = select_model(outputsdir)
+    print(model_dir)
 
     
