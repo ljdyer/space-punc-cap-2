@@ -74,11 +74,18 @@ def get_model_info(outputsdir: str) -> dict:
 
 
 # ====================
+def tabulate_list_of_dicts(l):
+
+    headers = {k: k for k in l[0].keys()}
+    return tabulate(l, headers=headers)
+
+
+# ====================
 def select_model(outputsdir: str) -> str:
 
     model_info = get_model_info(outputsdir)
     model_info = [{'option': i, **m} for i, m in enumerate(model_info)]
-    print(tabulate(model_info, headers=model_info[0]))
+    print(tabulate_list_of_dicts(model_info))
     choice = int(input('Which model do you wish to evaluate? '))
     chosen_model = get_dict_by_value(model_info, 'option', choice)
     return chosen_model['name']
