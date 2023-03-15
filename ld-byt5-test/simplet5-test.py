@@ -91,20 +91,20 @@ def select_model(outputsdir: str) -> str:
     return chosen_model['name']
 
 
-# # ====================
-# def evaluate_quick(model_dir):
+# ====================
+def evaluate_quick(model_dir):
 
-#     print(f'Loading test data from {test_path}...')
-#     test_df = load_and_prep_df(test_path, 'all')
-#     test_data = test_df.sample(NUM_TEST_SAMPLES).to_dict(orient='records')
-#     model = model_from_path(model_dir)
-#     for t in test_data:
-#         input = t['source_text']
-#         reference = t['target_text']
-#         hypothesis = model.predict(t['source_text'])[0]
-#         print(f"Input:      {input}")
-#         print(f"Reference:  {reference}")
-#         print(f"Hypothesis: {hypothesis}")
+    print(f'Loading test data from {test_path}...')
+    test_df = load_and_prep_df(test_path, 'all')
+    test_data = test_df.sample(NUM_TEST_SAMPLES).to_dict(orient='records')
+    model = model_from_path(model_dir)
+    for t in test_data:
+        input = t['source_text']
+        reference = t['target_text']
+        hypothesis = model.predict(t['source_text'])[0]
+        print(f"Input:      {input}")
+        print(f"Reference:  {reference}")
+        print(f"Hypothesis: {hypothesis}")
 
 
 # # ====================
@@ -164,47 +164,47 @@ def select_model(outputsdir: str) -> str:
 #         print()
 
 
-# # ====================
-# def load_and_prep_df(csv_path, num_docs_to_use):
+# ====================
+def load_and_prep_df(csv_path, num_docs_to_use):
 
-#     all_cleaned = pd.read_csv(csv_path)['all_cleaned'].to_list()
-#     all_cleaned = [SOD + doc + EOD for doc in all_cleaned]
-#     if num_docs_to_use == 'all':
-#         text = ' '.join(all_cleaned)
-#     else:
-#         num_docs_to_use = int(num_docs_to_use)
-#         text = ' '.join(all_cleaned[:num_docs_to_use])
-#     target_text = chunked_text(text, CHUNK_LENGTH_TARGET)
-#     source_text = [remove_formatting(s) for s in target_text]
-#     target_text = [s.replace(SOD, '').replace(EOD, '') for s in target_text]
-#     return pd.DataFrame({
-#         'source_text': pd.Series(source_text),
-#         'target_text': pd.Series(target_text)
-#     })
-
-
-# # ====================
-# def chunked_text(text, n):
-
-#     return [''.join(chunk)
-#             for chunk
-#             in more_itertools.chunked(list(text), n)]
+    all_cleaned = pd.read_csv(csv_path)['all_cleaned'].to_list()
+    all_cleaned = [SOD + doc + EOD for doc in all_cleaned]
+    if num_docs_to_use == 'all':
+        text = ' '.join(all_cleaned)
+    else:
+        num_docs_to_use = int(num_docs_to_use)
+        text = ' '.join(all_cleaned[:num_docs_to_use])
+    target_text = chunked_text(text, CHUNK_LENGTH_TARGET)
+    source_text = [remove_formatting(s) for s in target_text]
+    target_text = [s.replace(SOD, '').replace(EOD, '') for s in target_text]
+    return pd.DataFrame({
+        'source_text': pd.Series(source_text),
+        'target_text': pd.Series(target_text)
+    })
 
 
-# # ====================
-# def remove_formatting(string):
+# ====================
+def chunked_text(text, n):
 
-#     string = string.lower().replace(' ', '').replace('.', '').replace(',', '')
-#     return string
+    return [''.join(chunk)
+            for chunk
+            in more_itertools.chunked(list(text), n)]
 
 
-# # ====================
-# def model_from_path(path):
+# ====================
+def remove_formatting(string):
 
-#     print(f'Loading model from {path}...')
-#     model = SimpleT5()
-#     model.load_model("byt5", path)
-#     return model
+    string = string.lower().replace(' ', '').replace('.', '').replace(',', '')
+    return string
+
+
+# ====================
+def model_from_path(path):
+
+    print(f'Loading model from {path}...')
+    model = SimpleT5()
+    model.load_model("byt5", path)
+    return model
 
 
 # ====================
@@ -215,5 +215,14 @@ if __name__ == "__main__":
     
     model_dir = select_model(outputsdir)
     print(model_dir)
+    print()
 
+    OPTIONS = {
+        1: ('Quick evaluate', evaluate_quick)
+    }
+    for i, o in OPTIONS.values():
+        print(f"{i}. {o[0]}")
+    chosen_option = OPTIONS(int(input('What would you like to do? ')))
+    chosen_option[1]()
     
+
