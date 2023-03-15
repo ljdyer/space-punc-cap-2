@@ -3,3 +3,4 @@ simplet5
 more_itertools
 scikit-learn
 tabulate
+git+https://github.com/ljdyer/feature-restoration-evaluator.git

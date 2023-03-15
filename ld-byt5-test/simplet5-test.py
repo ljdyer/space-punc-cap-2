@@ -7,6 +7,8 @@ from sklearn.model_selection import train_test_split
 from simplet5 import SimpleT5
 from typing import List
 from pathlib import Path
+from datetime import datetime
+from fre import FeatureRestorationEvaluator
 import re
 
 if socket.gethostname() == 'Laurences-MacBook-Air.local':
@@ -31,6 +33,12 @@ parser.add_argument('outputsdir', metavar='O', type=str)
 SOD = '▶'
 EOD = '◀' 
 
+
+
+# ====================
+def current_timestamp():
+
+    return datetime.now().strftime('%d%b%Y_%H%M%S')
 
 
 # ====================
@@ -107,61 +115,72 @@ def evaluate_quick(model_dir):
         print(f"Hypothesis: {hypothesis}")
 
 
-# # ====================
-# def evaluate_full(model_dir, num_docs_to_use):
+# ====================
+def evaluate_full(model_dir):
 
-#     print(f'Loading test data from {test_path}...')
-#     test_docs = pd.read_csv(test_path)[['no_spaces', 'all_cleaned']].to_dict(orient='records')
-#     model = model_from_path(model_dir)
-#     if num_docs_to_use != 'all':
-#         num_docs_to_use = int(num_docs_to_use)
-#         test_docs = test_docs[:num_docs_to_use]
-#     result = pd.DataFrame()
-#     for doc in test_docs:
-#         input = doc['no_spaces']
-#         reference = doc['all_cleaned']
-#         hypothesis = predict_doc(model, input)
-#         print(f'Input:\n{input}\n\n')
-#         print(f'Reference:\n{reference}\n\n')
-#         print(f'Hypothesis:\n{hypothesis}\n\n')
-#         print('====================')
-#         result = result.append({'input': input, 'reference': reference, 'hypothesis': hypothesis}, ignore_index=True)
-#         result.to_csv(Path(model_dir) / f'evaluate_full_{num_docs_to_use}.csv')
+    test_docs = pd.read_csv(test_path)[['no_spaces', 'all_cleaned']].to_dict(orient='records')
+    num_docs_to_use = int(input(
+        f"There are {len(test_docs)} available. How many would you like to use? (Input an integer, or 'all'): "
+    ))
+    if num_docs_to_use != 'all':
+        num_docs_to_use = int(num_docs_to_use)
+        test_docs = test_docs[:num_docs_to_use]
+    model = model_from_path(model_dir)
+    results_path = Path(model_dir) / f"results_{current_timestamp()}.csv"
+    metrics_path = Path(model_dir) / f"metrics_{current_timestamp()}.csv"
+    results = pd.DataFrame()
+    for doc in test_docs:
+        input = doc['no_spaces']
+        reference = doc['all_cleaned']
+        hypothesis = predict_doc(model, input)
+        print(f'Input:\n{input}\n\n')
+        print(f'Reference:\n{reference}\n\n')
+        print(f'Hypothesis:\n{hypothesis}\n\n')
+        print('====================')
+        results = results.append({'input': input, 'reference': reference, 'hypothesis': hypothesis}, ignore_index=True)
+        results.to_csv(results_path)
+    fre = FeatureRestorationEvaluator(
+        results['reference'],
+        results['hypothesis'],
+        capitalization=True,
+        feature_chars='., '
+    )
+    fre.to_csv(metrics_path)
 
 
-# # ====================
-# def predict_doc(model, doc):
+# ====================
+def predict_doc(model, doc):
 
-#     all_output: List[str] = []
-#     prefix = ''
-#     while doc:
-#         restore_until = CHUNK_LENGTH_PREDICT - len(prefix)
-#         text_to_restore = prefix + doc[:restore_until]
-#         doc = doc[restore_until:]
-#         print(f"Chars remaining to process: {len(doc)}")
-#         chunk_restored: str = model.predict(text_to_restore)[0]
-#         chunk_restored_split: List[str] = chunk_restored.split(' ')
-#         prefix = remove_formatting(' '.join(chunk_restored_split[-CHUNKER_NUM_PREFIX_WORDS:]))
-#         all_output.extend(chunk_restored_split[:-CHUNKER_NUM_PREFIX_WORDS])
-#     output = ' '.join(all_output)
-#     # Add any text remaining in 'prefix'
-#     if prefix:
-#         prefix_restored = model.predict(prefix)[0]
-#         output = output + ' ' + prefix_restored.strip()
-#     return output
+    all_output: List[str] = []
+    prefix = ''
+    while doc:
+        restore_until = CHUNK_LENGTH_PREDICT - len(prefix)
+        text_to_restore = prefix + doc[:restore_until]
+        doc = doc[restore_until:]
+        print(f"Chars remaining to process: {len(doc)}")
+        chunk_restored: str = model.predict(text_to_restore)[0]
+        chunk_restored_split: List[str] = chunk_restored.split(' ')
+        prefix = remove_formatting(' '.join(chunk_restored_split[-CHUNKER_NUM_PREFIX_WORDS:]))
+        all_output.extend(chunk_restored_split[:-CHUNKER_NUM_PREFIX_WORDS])
+    output = ' '.join(all_output)
+    # Add any text remaining in 'prefix'
+    if prefix:
+        prefix_restored = model.predict(prefix)[0]
+        output = output + ' ' + prefix_restored.strip()
+    return output
     
     
-# # ====================
-# def predict(model_dir):
+# ====================
+def predict(model_dir):
 
-#     model = model_from_path(model_dir)
-#     while True:
-#         input_ = input("Enter text to restore formatting to (or 'x' to exit):\n")
-#         if input_.lower() == 'x':
-#             return
-#         print('\nPrediction:')
-#         print(model.predict(SOD + input_ + EOD)[0])
-#         print()
+    model = model_from_path(model_dir)
+    while True:
+        input_ = input("Enter text to restore formatting to (or 'x' to exit):\n")
+        if input_.lower() == 'x':
+            return
+        print('\nPrediction:')
+        print(model.predict(SOD + input_ + EOD)[0])
+        print()
 
 
 # ====================
