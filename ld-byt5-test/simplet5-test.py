@@ -220,7 +220,7 @@ if __name__ == "__main__":
     OPTIONS = {
         1: ('Quick evaluate', evaluate_quick)
     }
-    for i, o in OPTIONS.values():
+    for i, o in OPTIONS.items():
         print(f"{i}. {o[0]}")
     chosen_option = OPTIONS(int(input('What would you like to do? ')))
     chosen_option[1](model_dir)
