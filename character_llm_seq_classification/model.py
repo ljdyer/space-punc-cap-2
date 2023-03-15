@@ -16,12 +16,13 @@ class ByT5FineTuner(pl.LightningModule):
     ByT5 model fine-tuned for punctuation restoration.
     """
 
-    def __init__(self):
+    def __init__(self, hparam):
         super(ByT5FineTuner, self).__init__()
         self.model = T5ForConditionalGeneration.from_pretrained("google/byt5-base")
         self.tokenizer = AutoTokenizer.from_pretrained("google/byt5-base")
         self.save_hyperparameters()
         self.opt = None
+        self.hparam = hparam
 
     def is_logger(self):
         return True
@@ -101,7 +102,7 @@ class ByT5FineTuner(pl.LightningModule):
         optimizer_grouped_parameters = [
             {
                 "params": [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
-                "weight_decay": self.hparam.weight_decay,
+                "weight_decay": self.hparam["weight_decay"],
             },
             {
                 "params": [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)],
@@ -109,7 +110,7 @@ class ByT5FineTuner(pl.LightningModule):
             },
         ]
         optimizer = AdamW(optimizer_grouped_parameters,
-                          lr=self.hparam.learning_rate, eps=self.hparam.adam_epsilon)
+                          lr=self.hparam["learning_rate"], eps=self.hparam['adam_epsilon'])
         self.opt = optimizer
         return [optimizer]
 
@@ -157,16 +158,15 @@ class ByT5FineTuner(pl.LightningModule):
         train_dataset = get_dataset(
             tokenizer=self.tokenizer, type_path="train", args=self.hparam
         )
-        dataloader = DataLoader(train_dataset, batch_size=self.hparam.train_batch_size,
-                                drop_last=True, shuffle=True, num_workers=2)
-        t_total = (
-                (len(dataloader.dataset) //
-                 (self.hparam.train_batch_size * max(1, self.hparam.n_gpu)))
-                // self.hparam.gradient_accumulation_steps
-                * float(self.hparam.num_train_epochs)
-        )
+        dataloader = DataLoader(train_dataset, batch_size=self.hparam['train_batch_size'],
+                                drop_last=True, shuffle=True, num_workers=0)
+
+        t_total = ((len(dataloader.dataset) //
+                    (self.hparam['train_batch_size'] * 1)) //
+                   self.hparam['gradient_accumulation_steps'] * float(self.hparam['num_train_epochs'])
+                   )
         scheduler = get_linear_schedule_with_warmup(
-            self.opt, num_warmup_steps=self.hparam.warmup_steps, num_training_steps=t_total
+            self.opt, num_warmup_steps=self.hparam['warmup_steps'], num_training_steps=t_total
         )
         self.lr_scheduler = scheduler
         return dataloader
@@ -174,4 +174,4 @@ class ByT5FineTuner(pl.LightningModule):
     def val_dataloader(self):
         val_dataset = get_dataset(
             tokenizer=self.tokenizer, type_path="validation", args=self.hparam)
-        return DataLoader(val_dataset, batch_size=self.hparam.eval_batch_size, num_workers=2)
+        return DataLoader(val_dataset, batch_size=self.hparam['eval_batch_size'], num_workers=0)
