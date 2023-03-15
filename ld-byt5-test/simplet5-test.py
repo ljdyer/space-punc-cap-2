@@ -1,5 +1,5 @@
 import argparse
-import tabulate
+from tabulate import tabulate
 import pandas as pd
 import more_itertools
 import socket
