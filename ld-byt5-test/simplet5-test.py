@@ -130,14 +130,14 @@ def evaluate_full(model_dir):
     metrics_path = Path(model_dir) / f"metrics_{current_timestamp()}.csv"
     results = pd.DataFrame()
     for doc in test_docs:
-        input = doc['no_spaces']
+        input_ = doc['no_spaces']
         reference = doc['all_cleaned']
-        hypothesis = predict_doc(model, input)
-        print(f'Input:\n{input}\n\n')
+        hypothesis = predict_doc(model, input_)
+        print(f'Input:\n{input_}\n\n')
         print(f'Reference:\n{reference}\n\n')
         print(f'Hypothesis:\n{hypothesis}\n\n')
         print('====================')
-        results = results.append({'input': input, 'reference': reference, 'hypothesis': hypothesis}, ignore_index=True)
+        results = results.append({'input': input_, 'reference': reference, 'hypothesis': hypothesis}, ignore_index=True)
         results.to_csv(results_path)
     fre = FeatureRestorationEvaluator(
         results['reference'],
