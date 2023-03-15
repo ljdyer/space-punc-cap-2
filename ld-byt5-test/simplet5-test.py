@@ -237,7 +237,8 @@ if __name__ == "__main__":
     print()
 
     OPTIONS = {
-        1: ('Quick evaluate', evaluate_quick)
+        1: ('Quick evaluate', evaluate_quick),
+        2: ('Full evaluate', evaluate_full)
     }
     for i, o in OPTIONS.items():
         print(f"{i}. {o[0]}")
