@@ -3,7 +3,7 @@ import pandas as pd
 import more_itertools
 import socket
 from sklearn.model_selection import train_test_split
-from simplet5 import SimpleT5
+from my_simplet5 import SimpleT5
 from typing import List
 from pathlib import Path
 
@@ -12,13 +12,8 @@ if socket.gethostname() == 'Laurences-MacBook-Air.local':
 else:
     train_path = '/data/ldyer/ted_train.csv'
 
-CHUNK_LENGTH_TARGET = 100
-SOURCE_MAX_TOKEN_LEN = 100
-TARGET_MAX_TOKEN_LEN = 150
-NUM_TEST_SAMPLES = 10
-
-CHUNK_LENGTH_PREDICT = 100
-CHUNKER_NUM_PREFIX_WORDS = 5
+MAX_TOKEN_LEN = 128
+TOKEN_LEN_BUFFER = 10
 
 parser = argparse.ArgumentParser(
     description='Train a SimpletT5 model for feature restoration',
@@ -36,7 +31,7 @@ parser.add_argument(
     help="The maximum number of epochs.")
 
 SOD = '▶'
-EOD = '◀' 
+EOD = '◀'
 
 
 # ====================
@@ -48,12 +43,16 @@ def train(num_docs_to_use, outputdir, max_epochs):
     train_df, val_df = train_test_split(train_df, test_size=0.2)
     print(f'Num samples: {len(train_df)} train, {len(val_df)} validation')
     model = SimpleT5()
-    model.from_pretrained(model_type="byt5", model_name="google/byt5-small")
+    model.from_pretrained(
+        model_type="byt5",
+        model_name="google/byt5-small",
+        dataloader_num_workers=20
+    )
     model.train(train_df=train_df,
                 eval_df=val_df,
                 outputdir=f'outputs/{outputdir}',
-                source_max_token_len=SOURCE_MAX_TOKEN_LEN,
-                target_max_token_len=TARGET_MAX_TOKEN_LEN,
+                source_max_token_len=MAX_TOKEN_LEN,
+                target_max_token_len=MAX_TOKEN_LEN,
                 batch_size=8,
                 max_epochs=max_epochs,
                 use_gpu=True
@@ -70,7 +69,7 @@ def load_and_prep_df(csv_path, num_docs_to_use):
     else:
         num_docs_to_use = int(num_docs_to_use)
         text = ' '.join(all_cleaned[:num_docs_to_use])
-    target_text = chunked_text(text, CHUNK_LENGTH_TARGET)
+    target_text = chunked_text(text, MAX_TOKEN_LEN - TOKEN_LEN_BUFFER)
     source_text = [remove_formatting(s) for s in target_text]
     target_text = [s.replace(SOD, '').replace(EOD, '') for s in target_text]
     return pd.DataFrame({
@@ -107,7 +106,6 @@ def model_from_path(path):
 if __name__ == "__main__":
 
     args = parser.parse_args()
-    mode = args.mode
 
     if args.num_docs_to_use is None:
         raise ValueError("num_docs_to_use is required for training mode")

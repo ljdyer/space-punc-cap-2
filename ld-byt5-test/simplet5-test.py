@@ -9,6 +9,7 @@ from typing import List
 from pathlib import Path
 from datetime import datetime
 from fre import FeatureRestorationEvaluator
+from helper import tabulate_list_of_dicts, get_dict_by_value
 import re
 
 if socket.gethostname() == 'Laurences-MacBook-Air.local':
@@ -16,23 +17,23 @@ if socket.gethostname() == 'Laurences-MacBook-Air.local':
 else:
     test_path = '/data/ldyer/ted_test.csv'
 
-CHUNK_LENGTH_TARGET = 100
-SOURCE_MAX_TOKEN_LEN = 100 
-TARGET_MAX_TOKEN_LEN = 150
+CHUNK_LENGTH_TARGET = 118
 NUM_TEST_SAMPLES = 10
-
-CHUNK_LENGTH_PREDICT = 100
+CHUNK_LENGTH_PREDICT = 80
 CHUNKER_NUM_PREFIX_WORDS = 5
+AVG_CHARS_PROCESSED = 60
 
 parser = argparse.ArgumentParser(
     description='Evaluate SimpletT5 models for feature restoration',
     allow_abbrev=False
 )
-parser.add_argument('outputsdir', metavar='O', type=str)
+parser.add_argument(
+    'outputsdir', type=str,
+    help='The folder where the model outputs are stored'
+)
 
 SOD = '▶'
 EOD = '◀' 
-
 
 
 # ====================
@@ -46,23 +47,9 @@ def single_match_single_group(regex: str, string: str):
 
     find_all = re.findall(regex, string)
     if len(find_all) != 1:
-        raise RuntimeError(
-            f"Expected a single match, but found {len(find_all)} matches. " +\
-            f"RegEx: {regex}; String: {string}."
-        )
-    return find_all[0]
-
-
-# ====================
-def get_dict_by_value(list_of_dicts, key, value):
-
-    matches = [d for d in list_of_dicts if d[key] == value]
-    if len(matches) != 1:
-        raise RuntimeError(
-            f"Expected a single match, but found {len(matches)} matches. " +\
-            f"Key: {key}; Value: {value}"
-        )
-    return matches[0]
+        return None
+    else:
+        return find_all[0]
 
 
 # ====================
@@ -72,20 +59,21 @@ def get_model_info(outputsdir: str) -> dict:
     models = [m.name for m in outputsdir.glob('*')]
     model_info = []
     for model_name in models:
+        try:
+            epoch = int(single_match_single_group(r'epoch-([\d\.]*)', model_name)),
+            train_loss = float(single_match_single_group(r'train-loss-([\d\.]*)', model_name))
+            val_loss = float(single_match_single_group(r'val-loss-([\d\.]*)', model_name))
+        except:
+            continue
         model_info.append({
             'name': model_name,
-            'epoch': int(single_match_single_group(r'epoch-([\d\.]*)', model_name)),
-            'train_loss': float(single_match_single_group(r'train-loss-([\d\.]*)', model_name)),
-            'val_loss': float(single_match_single_group(r'val-loss-([\d\.]*)', model_name)),
+            'epoch': epoch,
+            'train_loss': train_loss,
+            'val_loss': val_loss,
         })
+    if len(model_info) < 1:
+        raise ValueError('No models found in directory!')
     return sorted(model_info, key=lambda x: x['epoch'])
-
-
-# ====================
-def tabulate_list_of_dicts(l):
-
-    headers = {k: k for k in l[0].keys()}
-    return tabulate(l, headers=headers)
 
 
 # ====================
@@ -107,10 +95,10 @@ def evaluate_quick(model_dir):
     test_data = test_df.sample(NUM_TEST_SAMPLES).to_dict(orient='records')
     model = model_from_path(model_dir)
     for t in test_data:
-        input = t['source_text']
+        input_ = t['source_text']
         reference = t['target_text']
-        hypothesis = model.predict(t['source_text'])[0]
-        print(f"Input:      {input}")
+        hypothesis = model.predict(input_)[0]
+        print(f"Input:      {input_}")
         print(f"Reference:  {reference}")
         print(f"Hypothesis: {hypothesis}")
 
@@ -130,7 +118,7 @@ def evaluate_full(model_dir):
     metrics_path = Path(model_dir) / f"metrics_{current_timestamp()}.csv"
     results = pd.DataFrame()
     for doc in test_docs:
-        input_ = doc['no_spaces']
+        input_ = SOD + doc['no_spaces'] + EOD
         reference = doc['all_cleaned']
         hypothesis = predict_doc(model, input_)
         print(f'Input:\n{input_}\n\n')
@@ -138,7 +126,7 @@ def evaluate_full(model_dir):
         print(f'Hypothesis:\n{hypothesis}\n\n')
         print('====================')
         results = results.append({'input': input_, 'reference': reference, 'hypothesis': hypothesis}, ignore_index=True)
-        results.to_csv(results_path)
+        results.to_csv(results_path, index=False)
     fre = FeatureRestorationEvaluator(
         results['reference'],
         results['hypothesis'],
@@ -147,7 +135,7 @@ def evaluate_full(model_dir):
     )
     prfs = pd.DataFrame(fre.get_prfs()).transpose()
     print(prfs)
-    prfs.to_csv(metrics_path)
+    prfs.to_csv(metrics_path, index=False)
 
 
 # ====================
@@ -160,17 +148,101 @@ def predict_doc(model, doc):
         text_to_restore = prefix + doc[:restore_until]
         doc = doc[restore_until:]
         print(f"Chars remaining to process: {len(doc)}")
-        chunk_restored: str = model.predict(text_to_restore)[0]
+        chunk_restored: str = model.predict(text_to_restore)[0].strip().lstrip('.,')
+        with open('output.txt', 'a', encoding='utf-8') as f:
+            f.write(text_to_restore + '\n')
+            f.write(chunk_restored + '\n')
+        chunk_restored = match_chars_2(text_to_restore.replace(SOD, '').replace(EOD, ''), chunk_restored)
         chunk_restored_split: List[str] = chunk_restored.split(' ')
         prefix = remove_formatting(' '.join(chunk_restored_split[-CHUNKER_NUM_PREFIX_WORDS:]))
         all_output.extend(chunk_restored_split[:-CHUNKER_NUM_PREFIX_WORDS])
     output = ' '.join(all_output)
     # Add any text remaining in 'prefix'
     if prefix:
-        prefix_restored = model.predict(prefix)[0]
-        output = output + ' ' + prefix_restored.strip()
+        prefix_restored = model.predict(prefix)[0].strip().lstrip('.,')
+        prefix_restored = match_chars_2(prefix.replace(SOD, '').replace(EOD, ''), prefix_restored)
+        with open('output.txt', 'a', encoding='utf-8') as f:
+            f.write(prefix + '\n')
+            f.write(prefix_restored + '\n')
+        output = output + ' ' + prefix_restored
+    output = output.strip().lstrip('., ')
+    output = normalize(output, '., ')
     return output
-    
+
+
+# ====================
+def normalize(str_, chars):
+
+    for char in list(chars):
+        str_ = re.sub(rf'{re.escape(char)}+', char, str_)
+    return str_
+
+
+# ====================
+def remove_formatting(str_):
+
+    str_ = str_.lower()
+    str_ = remove_chars(str_, '., ')
+    return str_
+
+
+# ====================
+def remove_chars(str_, chars):
+
+    return str_.translate({ord(c): None for c in chars})
+
+
+# ====================
+def match_chars(input_, hypothesis) -> str:
+
+    orig = input_
+    input_ = list(input_)
+    hypothesis = list(hypothesis)
+    hypothesis_output = []
+    while input_:
+        next_input_char = input_.pop(0)
+        while hypothesis:
+            next_hypothesis_char = hypothesis.pop(0)
+            if next_hypothesis_char.lower() not in [' ', '.', ',', next_input_char.lower()]:
+                hypothesis_output.append(next_input_char)
+                with open('warning_log.txt', 'a', encoding='utf-8') as f:
+                    f.write(f'WARNING: Unexpected character: {next_hypothesis_char}. Expected: {next_input_char}')
+                break
+            hypothesis_output.append(next_hypothesis_char)
+            if next_hypothesis_char.lower() == next_input_char.lower():
+                break
+    while hypothesis:
+        next_hypothesis_char = hypothesis.pop(0)
+        if next_hypothesis_char not in [' ', ',', '.']:
+            break
+        hypothesis_output.append(next_hypothesis_char)
+    input_chars = orig.lower().replace(' ', '').replace('.', '').replace(',', '')
+    hypothesis_output = ''.join(hypothesis_output)
+    output_chars = hypothesis_output.lower().replace(' ', '').replace('.', '').replace(',', '')
+    assert input_chars == output_chars
+    return hypothesis_output
+
+
+# ====================
+def match_chars_2(input_, hypothesis) -> str:
+
+    input_ = remove_formatting(input_)
+    chars_to_add = ''
+    for hyp_matches_up_to in range(len(hypothesis) + 1):
+        hyp_chars_so_far = remove_formatting(hypothesis[:hyp_matches_up_to])
+        if not input_.startswith(hyp_chars_so_far):
+            hyp_matches_up_to -= 1
+            chars_to_add = input_[len(hyp_chars_so_far) - 1:]
+            break
+    if len(chars_to_add) > 1:
+        warning_string = f'WARNING: adding the following characters unformatted as they do not appear in the hypothesis: {chars_to_add}'
+        print(warning_string)
+        with open('warning_log.txt', 'a', encoding='utf-8') as f:
+            f.write(warning_string)
+    output = hypothesis[:hyp_matches_up_to] + chars_to_add
+    assert remove_formatting(output) == input_
+    return output
+
     
 # ====================
 def predict(model_dir):
@@ -181,7 +253,7 @@ def predict(model_dir):
         if input_.lower() == 'x':
             return
         print('\nPrediction:')
-        print(model.predict(SOD + input_ + EOD)[0])
+        print(model.predict(input_)[0])
         print()
 
 
@@ -213,13 +285,6 @@ def chunked_text(text, n):
 
 
 # ====================
-def remove_formatting(string):
-
-    string = string.lower().replace(' ', '').replace('.', '').replace(',', '')
-    return string
-
-
-# ====================
 def model_from_path(path):
 
     print(f'Loading model from {path}...')
@@ -240,11 +305,11 @@ if __name__ == "__main__":
 
     OPTIONS = {
         1: ('Quick evaluate', evaluate_quick),
-        2: ('Full evaluate', evaluate_full)
+        2: ('Full evaluate', evaluate_full),
+        3: ('Free predict', predict),
     }
     for i, o in OPTIONS.items():
         print(f"{i}. {o[0]}")
     chosen_option = OPTIONS[int(input('What would you like to do? '))]
     chosen_option[1](model_dir)
     
-
