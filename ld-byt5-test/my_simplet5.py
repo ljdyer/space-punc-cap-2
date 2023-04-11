@@ -322,7 +322,8 @@ class SimpleT5:
         target_max_token_len: int = 512,
         batch_size: int = 8,
         max_epochs: int = 5,
-        use_gpu: bool = True,
+        gpus = 1,
+        strategy = None,
         outputdir: str = "outputs",
         early_stopping_patience_epochs: int = 0,  # 0 to disable early stopping feature
         precision=32,
@@ -380,11 +381,24 @@ class SimpleT5:
             )
             callbacks.append(early_stop_callback)
 
-        # add gpu support
-        gpus = 1 if use_gpu else 0
-
         # add logger
         loggers = True if logger == "default" else logger
+
+        # torch.cuda.set_device(gpus[0]
+        #                       )
+
+        from pytorch_lightning.callbacks import ModelCheckpoint
+
+        # saves a file like: my/path/sample-mnist-epoch=02-val_loss=0.32.ckpt
+        checkpoint_callback = ModelCheckpoint(
+            # monitor="val_loss",
+            dirpath=outputdir,
+            # save_top_k=3,
+            # mode="min",
+            save_weights_only=True
+        )
+
+        callbacks.append(checkpoint_callback)
 
         # prepare trainer
         trainer = pl.Trainer(
@@ -392,6 +406,7 @@ class SimpleT5:
             callbacks=callbacks,
             max_epochs=max_epochs,
             gpus=gpus,
+            strategy=strategy,
             precision=precision,
             log_every_n_steps=1,
         )
@@ -421,11 +436,14 @@ class SimpleT5:
 
         if use_gpu:
             if torch.cuda.is_available():
-                self.device = torch.device("cuda")
+                self.device = torch.device("cuda:2")
+                print(torch.cuda.device_count())
+                print(self.device)
             else:
                 raise "exception ---> no gpu found. set use_gpu=False, to use CPU"
         else:
             self.device = torch.device("cpu")
+        print(self.device)
 
         self.model = self.model.to(self.device)
 

@@ -6,111 +6,104 @@ from sklearn.model_selection import train_test_split
 from my_simplet5 import SimpleT5
 from typing import List
 from pathlib import Path
-
-if socket.gethostname() == 'Laurences-MacBook-Air.local':
-    train_path = 'ted_train.csv'
-else:
-    train_path = '/data/ldyer/ted_train.csv'
-
-MAX_TOKEN_LEN = 128
-TOKEN_LEN_BUFFER = 10
+from constants import *
+from helper import *
+from transformers import ByT5Tokenizer
+import os
 
 parser = argparse.ArgumentParser(
     description='Train a SimpletT5 model for feature restoration',
     allow_abbrev=False
 )
 
-parser.add_argument(
-    '--num_docs_to_use', '-n', type=str, default=None,
-    help="The number of documents to use. Must be 'all' or an integer.")
-parser.add_argument(
-    '--outputdir', '-o', type=str, default=None,
-    help="The directory in which to store saved models.")
-parser.add_argument(
-    '--max_epochs', '-e', type=int, default=None,
-    help="The maximum number of epochs.")
+parser.add_argument('--num_docs_to_use', '-n', type=str, help="The number of documents to use. Must be 'all' or an integer.")
+parser.add_argument('--outputdir', '-o', type=str, help="The directory in which to store saved models.")
+parser.add_argument('--max_epochs', '-e', type=int, help="The maximum number of epochs.")
+parser.add_argument('--language', '-l', type=str, help="The language to train for.")
+parser.add_argument('--model_name', '-m', type=str, help="Model name. 's' or 'b'.")
+parser.add_argument('--gpus', '-g', type=str, help="GPUs. E.g. 1,2")
+parser.add_argument('--strategy', '-s', type=str, help="Strategy. ddp or ddp_sharded.")
+parser.add_argument('--check', '-c', type=int, default=1)
 
-SOD = '▶'
-EOD = '◀'
 
 
 # ====================
-def train(num_docs_to_use, outputdir, max_epochs):
+def get_data():
 
-    print(f'Loading training data from {train_path}...')
-    train_df = load_and_prep_df(train_path, num_docs_to_use)
-    print(train_df.head(10))
+    global train_df
+    global val_df
+    train_path = TRAIN_PATH[lang]
+    if 'LOCAL_RANK' not in os.environ.keys() and 'NODE_RANK' not in os.environ.keys():
+        print(f'Loading training data from {train_path}...')
+    train_df = load_and_prep_df(train_path, num_docs_to_use, lang)
+    if 'LOCAL_RANK' not in os.environ.keys() and 'NODE_RANK' not in os.environ.keys():
+        print()
+        print(train_df.head(10))
+        print()
     train_df, val_df = train_test_split(train_df, test_size=0.2)
-    print(f'Num samples: {len(train_df)} train, {len(val_df)} validation')
+    if 'LOCAL_RANK' not in os.environ.keys() and 'NODE_RANK' not in os.environ.keys():
+        print(f'Num samples: {len(train_df)} train, {len(val_df)} validation')
+        print()
+        show_input_lengths(train_df)
+        
+
+# ====================
+def train():
+
     model = SimpleT5()
     model.from_pretrained(
         model_type="byt5",
-        model_name="google/byt5-small",
+        model_name=model_name,
         dataloader_num_workers=20
     )
     model.train(train_df=train_df,
                 eval_df=val_df,
-                outputdir=f'outputs/{outputdir}',
-                source_max_token_len=MAX_TOKEN_LEN,
-                target_max_token_len=MAX_TOKEN_LEN,
+                outputdir=outputdir,
+                source_max_token_len=MAX_TOKEN_LEN_BYTES,
+                target_max_token_len=MAX_TOKEN_LEN_BYTES,
                 batch_size=8,
                 max_epochs=max_epochs,
-                use_gpu=True
+                gpus=gpus,
+                strategy=strategy
             )
 
 
 # ====================
-def load_and_prep_df(csv_path, num_docs_to_use):
+def show_input_lengths(data):
 
-    all_cleaned = pd.read_csv(csv_path)['all_cleaned'].to_list()
-    all_cleaned = [SOD + doc + EOD for doc in all_cleaned]
-    if num_docs_to_use == 'all':
-        text = ' '.join(all_cleaned)
-    else:
-        num_docs_to_use = int(num_docs_to_use)
-        text = ' '.join(all_cleaned[:num_docs_to_use])
-    target_text = chunked_text(text, MAX_TOKEN_LEN - TOKEN_LEN_BUFFER)
-    source_text = [remove_formatting(s) for s in target_text]
-    target_text = [s.replace(SOD, '').replace(EOD, '') for s in target_text]
-    return pd.DataFrame({
-        'source_text': pd.Series(source_text),
-        'target_text': pd.Series(target_text)
-    })
+    info = []
+    for text_type, col_label in [('Inputs', 'source_text'), ('Outputs', 'target_text')]:
+        texts = data[col_label].to_list()
+        text_lengths = [len(s) for s in texts]
+        info.append({'Text_type': text_type, 'Min': min(text_lengths), 'Max': max(text_lengths), 'Avg': f"{sum(text_lengths)/len(text_lengths):.2f}"})
+    print('Expected character lengths of training examples:')
+    print(tabulate_list_of_dicts(info))
+    print()
 
-
-# ====================
-def chunked_text(text, n):
-
-    return [''.join(chunk)
-            for chunk
-            in more_itertools.chunked(list(text), n)]
-
-
-# ====================
-def remove_formatting(string):
-
-    string = string.lower().replace(' ', '').replace('.', '').replace(',', '')
-    return string
-
-
-# ====================
-def model_from_path(path):
-
-    print(f'Loading model from {path}...')
-    model = SimpleT5()
-    model.load_model("byt5", path)
-    return model
+    info = []
+    for text_type, col_label in [('Inputs', 'source_text'), ('Outputs', 'target_text')]:
+        texts = data[col_label].to_list()
+        text_lengths = [utf8len(s)+1 for s in texts]
+        info.append({'Text_type': text_type, 'Min': min(text_lengths), 'Max': max(text_lengths), 'Avg': f"{sum(text_lengths)/len(text_lengths):.2f}"})
+    print('Expected tokenized lengths of training examples:')
+    print(tabulate_list_of_dicts(info))
+    print()
 
 
 # ====================
 if __name__ == "__main__":
 
+    global outputdir, num_docs_to_use, max_epochs, lang, model_name, gpus, strategy, check
     args = parser.parse_args()
+    num_docs_to_use = args.num_docs_to_use
+    outputdir = args.outputdir
+    max_epochs = args.max_epochs
+    lang = args.language
+    model_name = 'google/byt5-small' if args.model_name.lower() == 's' else 'google/byt5-base'
+    gpus = [int(x) for x in re.findall(r'\d', args.gpus)]
+    strategy = None if args.strategy == 'none' else args.strategy
+    check = bool(args.check)
 
-    if args.num_docs_to_use is None:
-        raise ValueError("num_docs_to_use is required for training mode")
-    if args.outputdir is None:
-        raise ValueError("outputdir is required for training mode")
-    if args.max_epochs is None:
-        raise ValueError("epochs is required for training mode")
-    train(args.num_docs_to_use, args.outputdir, args.max_epochs)
+    get_data()
+    if check is False:
+        train()
